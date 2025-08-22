@@ -5,7 +5,7 @@ const Table = () => {
   const [userData, setUserData] = useState([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-  const [sortOrder, setSortOrder] = useState("asc");
+  const [sortOrder, setSortOrder] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 3;
   const [editUser, setEditUser] = useState(null);
