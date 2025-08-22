@@ -7,28 +7,46 @@ const Table = () => {
   const [filter, setFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("asc");
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 5;
+  const rowsPerPage = 3;
   const [editUser, setEditUser] = useState(null);
   const [formData, setFormData] = useState({ name: "", email: "" });
+  const [debouncedValue, setDebouncedValue] = useState(search);
 
   const getUserData = async () => {
     try {
-      const response = await axios.get(
-        "https://jsonplaceholder.typicode.com/users"
-      );
-      setUserData(response.data);
+      const localData = localStorage.getItem("data");
+
+      if (localData) {
+        // Load from localStorage if available
+        setUserData(JSON.parse(localData));
+      } else {
+        // Otherwise fetch from API and store
+        const response = await axios.get(process.env.REACT_APP_API);
+        localStorage.setItem("data", JSON.stringify(response.data));
+        setUserData(response.data);
+      }
     } catch (error) {
       console.log(error);
     }
   };
 
+  //   To call API
   useEffect(() => {
     getUserData();
   }, []);
+  // To Debounce Search
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(search);
+    }, 1500);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [search, 2000]);
 
   //  Search
   let filteredData = userData.filter((user) =>
-    user.name.toLowerCase().includes(search.toLowerCase())
+    user.name.toLowerCase().includes(debouncedValue.toLowerCase())
   );
 
   //  Filter
@@ -39,13 +57,15 @@ const Table = () => {
   }
 
   // Sorting
-  filteredData.sort((a, b) => {
-    const nameA = a.name.toLowerCase();
-    const nameB = b.name.toLowerCase();
-    return sortOrder === "asc"
-      ? nameA.localeCompare(nameB)
-      : nameB.localeCompare(nameA);
-  });
+  if (sortOrder !== "") {
+    filteredData.sort((a, b) => {
+      const nameA = a.name.toLowerCase();
+      const nameB = b.name.toLowerCase();
+      return sortOrder === "asc"
+        ? nameA.localeCompare(nameB)
+        : nameB.localeCompare(nameA);
+    });
+  }
 
   // Pagination
   const indexOfLastRow = currentPage * rowsPerPage;
@@ -53,28 +73,35 @@ const Table = () => {
   const currentRows = filteredData.slice(indexOfFirstRow, indexOfLastRow);
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
 
-  // Delete User
+  // Delete
   const handleDelete = (id) => {
-    setUserData(userData.filter((user) => user.id !== id));
+    let updatedData = userData.filter((user) => user.id !== id);
+    setUserData(updatedData);
+    localStorage.setItem("data", JSON.stringify(updatedData));
   };
 
-  // Edit User
+  // Edit
   const handleEdit = (user) => {
     setEditUser(user.id);
     setFormData({ name: user.name, email: user.email });
   };
 
-  //Save andd Updated User
-  const handleUpdate = (id) => {
-    setUserData(
-      userData.map((user) => (user.id === id ? { ...user, ...formData } : user))
+  //Save andd Update
+  const handleUpdate = async (id) => {
+    let updatedData = userData.map((user) =>
+      user.id === id ? { ...user, ...formData } : user
     );
-    setEditUser(null); 
+    localStorage.setItem("data", JSON.stringify(updatedData));
+    setUserData(updatedData);
+
+    setEditUser(null);
   };
 
   return (
     <div>
-      <h1 style={{ textAlign: "center", fontFamily:"cursive"}}>User Details</h1>
+      <h1 style={{ textAlign: "center", fontFamily: "cursive" }}>
+        User Details
+      </h1>
 
       <div
         style={{
@@ -118,8 +145,9 @@ const Table = () => {
           onChange={(e) => setSortOrder(e.target.value)}
           style={{ padding: "8px" }}
         >
-          <option value="asc">Sort: Name A → Z</option>
-          <option value="desc">Sort: Name Z → A</option>
+          <option value="">Sort</option>
+          <option value="asc">A → Z</option>
+          <option value="desc">Z → A</option>
         </select>
       </div>
 
@@ -203,7 +231,7 @@ const Table = () => {
         </div>
       )}
 
-      {/* Pagi */}
+      {/* Pagination */}
       {filteredData.length > rowsPerPage && (
         <div
           style={{
